@@ -1,14 +1,3 @@
-"""Tagalog-English (Taglish) sentiment analyzer built on VADER.
-
-Extended with:
-1. Lexicon word management (with sentiment scores -4.0 to +4.0).
-2. Custom Negator and Booster/Intensifier management.
-3. Structural Sarcasm Phrase Analysis for Taglish.
-
-Usage:
-    python tagalog_english_sentiment.py
-"""
-
 import re
 from typing import Dict, List, Tuple, Any
 import vaderSentiment.vaderSentiment as vs
@@ -16,25 +5,23 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 
 class SarcasmDetector:
-    """Analyzes Taglish text for structural sarcasm patterns and sarcastic markers."""
 
     def __init__(self):
-        # Sarcastic markers and phrases common in Taglish
+
         self.sarcastic_phrases = [
             "wow ha", "wow ah", "edi ikaw na", "ikaw na", "ikaw na magaling",
             "galing mo talaga", "ganda mo", "sige pa", "pabida", "charot",
             "charr", "eme", "wehh", "salamat ah", "salamat ha", "pagpatuloy mo yan"
         ]
 
-        # Regular expressions for structural sarcasm detection
         self.contrast_patterns = [
-            # Positive praise followed by contrast/insult: e.g. "ganda mo, mukha kang ewan"
+            
             r"(ganda|galing|bait|talino|sarap)\b.*(mukha|ewan|tanga|bobo|sira|mali|walang kwenta)",
-            # "Salamat" followed by damage/negative result: e.g. "salamat ah, nasira mo"
+
             r"salamat\s+(ah|ha|din)?.*(nasira|tinapon|pinagpalit|mali|bwisit|tapon)",
-            # "Edi/Ikaw na" praise patterns
+
             r"(edi|sige)\s+ikaw\s+na\b",
-            # Quotes around positive praise: e.g. "magaling" ka talaga
+            
             r'["\'](galing|mabuti|maganda|bait|lodi)["\']'
         ]
 
@@ -45,28 +32,21 @@ class SarcasmDetector:
             self.sarcastic_phrases.append(phrase_clean)
 
     def detect(self, text: str, initial_compound: float) -> Tuple[bool, float, List[str]]:
-        """Detect sarcasm based on structural rules, markers, and sentiment polarity contrast.
 
-        Returns:
-            Tuple of (is_sarcastic: bool, confidence_score: float, reasons: List[str])
-        """
         text_lower = text.lower().strip()
         reasons = []
         score = 0.0
 
-        # Check explicit sarcastic markers
         for phrase in self.sarcastic_phrases:
             if phrase in text_lower:
                 score += 0.45
                 reasons.append(f"Detected sarcastic marker: '{phrase}'")
 
-        # Check structural regex contrast patterns
         for pattern in self.contrast_patterns:
             if re.search(pattern, text_lower):
                 score += 0.50
                 reasons.append(f"Matched sarcastic structural contrast pattern: '{pattern}'")
 
-        # Check structural contrast: positive sentiment words combined with negative context
         if initial_compound > 0.3:
             negative_words = ["ewan", "tanga", "bobo", "sira", "basura", "pangit", "kainis", "nasira", "mali"]
             for neg_word in negative_words:
@@ -75,7 +55,6 @@ class SarcasmDetector:
                     reasons.append(f"Mixed polarity contrast: positive overall score with negative word '{neg_word}'")
                     break
 
-        # Check sarcastic punctuation structure (e.g., quotes around praise or excessive exclamation after sarcasm phrase)
         if re.search(r'\b(wow|galing|ganda)\b.*\b(ha|ah)\b', text_lower):
             score += 0.35
             reasons.append("Detected sarcastic interjection structure (e.g. 'wow ha' / 'galing ah')")
@@ -89,10 +68,8 @@ class TaglishSentiment:
     """Tagalog-English (Taglish) Sentiment Analyzer extending VADER with custom lexicons,
     negators, boosters, and sarcasm detection.
     """
-
-    # Base Tagalog lexicon mapping words to sentiment scores (-4.0 to +4.0)
     DEFAULT_LEXICON = {
-        # Positive words
+
         "maganda": 2.7, "mabuti": 2.0, "magaling": 2.8, "masaya": 2.9,
         "mahal": 2.5, "salamat": 2.0, "galing": 2.8, "astig": 2.4,
         "masarap": 2.6, "gwapo": 2.2, "ganda": 2.6, "tama": 1.5,
@@ -100,7 +77,7 @@ class TaglishSentiment:
         "sigurado": 2.2, "panalo": 2.7, "wagi": 2.6, "maaasahan": 2.3,
         "lodi": 2.5, "petmalu": 2.6, "sana all": 1.5, "respeto": 2.0,
 
-        # Negative words
+
         "pangit": -2.7, "masama": -2.5, "malungkot": -2.6, "galit": -2.8,
         "mahirap": -1.5, "sayang": -1.8, "walang kwenta": -3.0, "basura": -3.0,
         "nakakainis": -2.7, "nakakasuya": -2.2, "bobo": -3.0, "pagod": -1.4,
@@ -109,10 +86,8 @@ class TaglishSentiment:
         "pabida": -2.4, "ewan": -1.2, "bwisit": -2.8, "buwisit": -2.8,
     }
 
-    # Tagalog negators
     DEFAULT_NEGATORS = ["hindi", "di", "ayaw", "wala", "huwag", "wag", "hinding-hindi", "dili"]
 
-    # Tagalog boosters / intensifiers
     DEFAULT_BOOSTERS = {
         "sobrang": vs.B_INCR,
         "napaka": vs.B_INCR,
@@ -207,7 +182,6 @@ class TaglishSentiment:
             else:
                 adjusted_compound = raw_compound - 0.15
 
-            # Clamp compound between -1.0 and 1.0
             adjusted_compound = max(-1.0, min(1.0, adjusted_compound))
 
         label = self._determine_label(adjusted_compound, is_sarcastic)
