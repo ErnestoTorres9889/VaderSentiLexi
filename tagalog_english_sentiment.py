@@ -50,7 +50,9 @@ class SarcasmDetector:
             clean_phrase = phrase.strip().lower()
             if not clean_phrase:
                 continue
-            pattern = rf"(?:\b|^){re.escape(clean_phrase)}(?:\b|$)"
+            prefix = r"(?:\b|^)" if clean_phrase[0].isalnum() or clean_phrase[0] == '_' else r"(?:(?<=\s)|^)"
+            suffix = r"(?:\b|$)" if clean_phrase[-1].isalnum() or clean_phrase[-1] == '_' else r"(?:(?=\s)|$)"
+            pattern = f"{prefix}{re.escape(clean_phrase)}{suffix}"
             if re.search(pattern, text_lower):
                 if not any(clean_phrase in mp for mp in matched_phrases):
                     matched_phrases.append(clean_phrase)
@@ -74,7 +76,7 @@ class SarcasmDetector:
             negative_words = ["ewan", "tanga", "bobo", "sira", "basura", "pangit", "panget", "kainis", "nasira", "mali"]
             for neg_word in negative_words:
                 if re.search(rf'\b{re.escape(neg_word)}\b', text_lower):
-                    negated = bool(re.search(rf'\b(?:hindi|di|ayaw|wala|huwag|wag)\s+{re.escape(neg_word)}\b', text_lower))
+                    negated = bool(re.search(rf'\b(?:hindi|di|ayaw|wala|huwag|wag)\s+(?:\w+\s+)?{re.escape(neg_word)}\b', text_lower))
                     if not negated:
                         score += 0.35
                         reasons.append(f"Mixed polarity contrast: positive overall score with negative word '{neg_word}'")
@@ -268,11 +270,13 @@ class TaglishSentiment:
 
     def _prepare_text_for_vader(self, text: str) -> str:
         """Preprocess text for VADER by decomposing superlative affixes and joining multi-word idioms."""
-        expanded = re.sub(r'\bnapaka([a-z]{3,})\b', r'napaka \1', text, flags=re.IGNORECASE)
+        expanded = re.sub(r'\bnapaka-?([a-z]{3,})\b', r'napaka \1', text, flags=re.IGNORECASE)
 
         sorted_phrases = sorted(self._multiword_lexicon, key=len, reverse=True)
         for phrase in sorted_phrases:
-            pattern = rf'\b{re.escape(phrase)}\b'
+            prefix = r'\b' if phrase[0].isalnum() or phrase[0] == '_' else r'(?:(?<=\s)|^)'
+            suffix = r'\b' if phrase[-1].isalnum() or phrase[-1] == '_' else r'(?:(?=\s)|$)'
+            pattern = f'{prefix}{re.escape(phrase)}{suffix}'
             expanded = re.sub(pattern, phrase.replace(' ', '_'), expanded, flags=re.IGNORECASE)
 
         return expanded
