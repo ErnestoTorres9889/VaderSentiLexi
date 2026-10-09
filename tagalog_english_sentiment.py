@@ -9,7 +9,6 @@ class SarcasmDetector:
     """Detects sarcasm and ironic contrast in Tagalog/Taglish texts."""
 
     def __init__(self):
-        # Distinct sarcastic markers and irony/humor particles
         self.sarcastic_phrases = [
             "wow ha", "wow ah", "wow naman ha", "wow naman ah",
             "edi wow", "edi ikaw na", "sige ikaw na", "ikaw na magaling",
@@ -18,18 +17,13 @@ class SarcasmDetector:
             "wehh", "weh di nga", "pagpatuloy mo yan"
         ]
 
-        # Structural contrast patterns indicative of sarcasm
         self.contrast_patterns = [
-            # Positive praise juxtaposed with an insult/derogatory phrase
             r"\b(?:ma)?(?:ganda|galing|bait|talino|sarap|husay)\b.*?\b(?:mukha(?:ng|\s+kang)?\s+(?:ewan|tanga|bobo|sira|gago)|ewan|tanga|bobo|sira|nasira|mali|walang[ _]kwenta|basura|pangit|panget)\b",
 
-            # Gratitude followed by damage, loss, or nuisance
             r"\bsalamat(?:\s+(?:ah|ha|din|naman))?.*?\b(?:nasira|sinira|tinapon|pinagpalit|mali|bwisit|buwisit|tapon|basura)\b",
 
-            # Sarcastic concession: edi/sige ikaw na ...
             r"\b(?:edi|sige)\s+ikaw\s+na\b",
 
-            # Quoted pseudo-praise: e.g. "galing", 'magaling'
             r'["\'](?:ma)?(?:galing|buti|ganda|bait|husay|lodi|petmalu)["\']'
         ]
 
@@ -50,7 +44,7 @@ class SarcasmDetector:
         reasons = []
         score = 0.0
 
-        # 1. Match whole-phrase sarcastic markers with word boundaries
+
         matched_phrases = []
         for phrase in sorted(self.sarcastic_phrases, key=len, reverse=True):
             clean_phrase = phrase.strip().lower()
@@ -63,22 +57,18 @@ class SarcasmDetector:
                     score += 0.45
                     reasons.append(f"Detected sarcastic marker: '{clean_phrase}'")
 
-        # 2. Structural contrast patterns
         for pattern in self.contrast_patterns:
             if re.search(pattern, text_lower):
                 score += 0.50
                 reasons.append(f"Matched sarcastic structural contrast pattern: '{pattern}'")
                 break
 
-        # 3. Sarcastic interjection structure (e.g. 'wow ha', 'galing ah')
         interjection_pattern = r'\b(?:wow|galing|lodi|petmalu)\s+(?:naman\s+)?(?:ha|ah)\b'
         if re.search(interjection_pattern, text_lower):
             if not any("wow" in mp or "ha" in mp or "ah" in mp for mp in matched_phrases):
                 score += 0.35
                 reasons.append("Detected sarcastic interjection structure (e.g. 'wow ha' / 'galing ah')")
 
-        # 4. Mixed polarity contrast: positive overall score juxtaposed with an unnegated insult,
-        # excluding constructive sentences with concessive conjunctions (e.g. 'pero', 'kaso').
         is_concessive = bool(re.search(r'\b(pero|kaso|ngunit|subalit|bagamat|kahit|although|however|but)\b', text_lower))
         if initial_compound > 0.3 and not is_concessive:
             negative_words = ["ewan", "tanga", "bobo", "sira", "basura", "pangit", "panget", "kainis", "nasira", "mali"]
@@ -100,7 +90,6 @@ class TaglishSentiment:
     negators, boosters, morphological handling, and sarcasm detection.
     """
     DEFAULT_LEXICON = {
-        # Positive sentiment (Tagalog, root words, inflections, slang)
         "maganda": 2.7, "magandang": 2.7, "ganda": 2.6,
         "mabuti": 2.0, "mabuting": 2.0, "buti": 1.8,
         "magaling": 2.8, "magagaling": 2.8, "galing": 2.8,
@@ -124,8 +113,7 @@ class TaglishSentiment:
         "matalino": 2.5, "talino": 2.5,
         "husay": 2.6, "mahusay": 2.7,
         "sana all": 1.5,
-
-        # Negative sentiment (Tagalog, root words, inflections, slang)
+        
         "pangit": -2.7, "panget": -2.7, "kapangitan": -2.5,
         "masama": -2.5, "sama": -2.0,
         "malungkot": -2.6, "nalungkot": -2.4, "lungkot": -2.2, "nakakalungkot": -2.6,
@@ -280,10 +268,8 @@ class TaglishSentiment:
 
     def _prepare_text_for_vader(self, text: str) -> str:
         """Preprocess text for VADER by decomposing superlative affixes and joining multi-word idioms."""
-        # 1. Expand superlative prefix 'napaka-' (e.g. 'napakaganda' -> 'napaka ganda')
         expanded = re.sub(r'\bnapaka([a-z]{3,})\b', r'napaka \1', text, flags=re.IGNORECASE)
 
-        # 2. Join multi-word lexicon phrases with underscores so VADER tokenizes them as single tokens
         sorted_phrases = sorted(self._multiword_lexicon, key=len, reverse=True)
         for phrase in sorted_phrases:
             pattern = rf'\b{re.escape(phrase)}\b'
@@ -316,14 +302,11 @@ class TaglishSentiment:
         scores = self.analyzer.polarity_scores(vader_input)
         raw_compound = scores["compound"]
 
-        # Run Sarcasm Detection
         is_sarcastic, sarcasm_conf, reasons = self.sarcasm_detector.detect(cleaned_text, raw_compound)
 
-        # Adjust compound score if sarcasm is detected
         adjusted_compound = raw_compound
         if is_sarcastic:
             if raw_compound > 0:
-                # Invert positive sentiment to negative for sarcastic praise
                 adjusted_compound = -abs(raw_compound) - 0.2
             elif raw_compound == 0:
                 adjusted_compound = -0.35
@@ -368,8 +351,7 @@ def main():
     print("  booster <word> [incr]   - Add booster ('incr', 'decr', or float, default: incr)")
     print("  sarcasm <phrase>        - Add sarcastic phrase trigger")
     print("  quit                    - Exit program\n")
-
-    # Run quick test suite
+    
     print("Running initial test cases...")
     test_cases = [
         "Maganda at mabuti ang araw na ito.",
