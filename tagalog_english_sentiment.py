@@ -35,6 +35,16 @@ class SarcasmDetector:
         if phrase_clean and phrase_clean not in self.sarcastic_phrases:
             self.sarcastic_phrases.append(phrase_clean)
 
+    def remove_sarcastic_phrase(self, phrase: str) -> bool:
+        """Remove a sarcastic phrase trigger."""
+        if not isinstance(phrase, str):
+            return False
+        phrase_clean = phrase.strip().lower()
+        if phrase_clean in self.sarcastic_phrases:
+            self.sarcastic_phrases.remove(phrase_clean)
+            return True
+        return False
+
     def detect(self, text: str, initial_compound: float) -> Tuple[bool, float, List[str]]:
         """Detect sarcastic intent using lexical markers, contrast patterns, and mixed polarity."""
         if not text or not isinstance(text, str):
@@ -261,6 +271,57 @@ class TaglishSentiment:
         """Add a custom sarcastic phrase trigger."""
         self.sarcasm_detector.add_sarcastic_phrase(phrase)
 
+    def remove_negator(self, word: str) -> bool:
+        """Remove a negator word."""
+        if not isinstance(word, str):
+            return False
+        clean_word = word.strip().lower()
+        if clean_word in vs.NEGATE:
+            vs.NEGATE.remove(clean_word)
+            return True
+        return False
+
+    def remove_booster(self, word: str) -> bool:
+        """Remove a booster / intensifier word."""
+        if not isinstance(word, str):
+            return False
+        clean_word = word.strip().lower()
+        if clean_word in vs.BOOSTER_DICT:
+            del vs.BOOSTER_DICT[clean_word]
+            return True
+        return False
+
+    def remove_sarcastic_phrase(self, phrase: str) -> bool:
+        """Remove a sarcastic phrase trigger."""
+        return self.sarcasm_detector.remove_sarcastic_phrase(phrase)
+
+    def remove_item(self, item: str, category: str = "any") -> Dict[str, bool]:
+        """Remove a word/phrase from specified category ('lexicon', 'negator', 'booster', 'sarcasm', or 'any').
+        Returns dictionary indicating what was removed.
+        """
+        if not isinstance(item, str) or not item.strip():
+            return {"lexicon": False, "negator": False, "booster": False, "sarcasm": False}
+        clean_item = item.strip().lower()
+        category = (category or "any").strip().lower()
+
+        results = {
+            "lexicon": False,
+            "negator": False,
+            "booster": False,
+            "sarcasm": False
+        }
+
+        if category in ("lexicon", "word", "any"):
+            results["lexicon"] = self.remove_lexicon_word(clean_item)
+        if category in ("negator", "neg", "any"):
+            results["negator"] = self.remove_negator(clean_item)
+        if category in ("booster", "boost", "any"):
+            results["booster"] = self.remove_booster(clean_item)
+        if category in ("sarcasm", "sarcastic", "phrase", "any"):
+            results["sarcasm"] = self.remove_sarcastic_phrase(clean_item)
+
+        return results
+
     @staticmethod
     def _clean(text: str) -> str:
         """Clean and normalize input text while preserving casing for emphasis."""
@@ -350,11 +411,12 @@ def main():
     print("   With Lexicon Scoring, Negators, Boosters & Sarcasm ")
     print("==================================================")
     print("Commands:")
-    print("  add <word> <score>      - Add lexicon word/phrase with score (-4.0 to +4.0)")
-    print("  negator <word>          - Add custom negator")
-    print("  booster <word> [incr]   - Add booster ('incr', 'decr', or float, default: incr)")
-    print("  sarcasm <phrase>        - Add sarcastic phrase trigger")
-    print("  quit                    - Exit program\n")
+    print("  add <word> <score>               - Add lexicon word/phrase with score (-4.0 to +4.0)")
+    print("  negator <word>                   - Add custom negator")
+    print("  booster <word> [incr]            - Add booster ('incr', 'decr', or float, default: incr)")
+    print("  sarcasm <phrase>                 - Add sarcastic phrase trigger")
+    print("  remove [type] <word/phrase>      - Remove item (type: 'lexicon', 'negator', 'booster', 'sarcasm', or omitted)")
+    print("  quit                             - Exit program\n")
     
     print("Running initial test cases...")
     test_cases = [
@@ -448,6 +510,29 @@ def main():
                 print(f"[Sarcasm] Added sarcastic phrase trigger: '{phrase_to_add}'")
             else:
                 print("Usage: sarcasm <phrase>")
+            continue
+
+        if cmd_lower.startswith("remove ") or cmd_lower == "remove":
+            arg_str = user_input[6:].strip() if cmd_lower.startswith("remove ") else ""
+            if not arg_str:
+                print("Usage: remove [lexicon|negator|booster|sarcasm] <word/phrase>  OR  remove <word/phrase>")
+                continue
+
+            parts = arg_str.split(maxsplit=1)
+            target_cat = "any"
+            target_item = arg_str
+
+            if len(parts) == 2 and parts[0].lower() in ("lexicon", "word", "negator", "booster", "sarcasm", "sarcastic", "phrase"):
+                target_cat = parts[0].lower()
+                target_item = parts[1]
+
+            res_map = tool.remove_item(target_item, target_cat)
+            removed_from = [cat for cat, removed in res_map.items() if removed]
+
+            if removed_from:
+                print(f"[Remove] Removed '{target_item}' from: {', '.join(removed_from)}")
+            else:
+                print(f"[Remove] Item '{target_item}' was not found in specified category ({target_cat})")
             continue
 
         res = tool.analyze(user_input)

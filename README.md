@@ -106,6 +106,7 @@ python tagalog_english_sentiment.py
 | `negator <word>` | Register a custom negation word. | `negator hindi` |
 | `booster <word> [incr\|decr]` | Add a booster/intensifier or de-amplifier word. | `booster sobra incr` |
 | `sarcasm <phrase>` | Add a new sarcastic trigger phrase. | `sarcasm edi shing` |
+| `remove [type] <word/phrase>` | Remove an entry from `lexicon`, `negator`, `booster`, `sarcasm`, or automatically search all types. | `remove negator dili` / `remove maganda` |
 | `quit` / `exit` / `q` | Exit the CLI application. | `quit` |
 
 ---
