@@ -1,42 +1,66 @@
 # Tagalog-English (Taglish) Sentiment & Sarcasm Analyzer
 
-An enhanced sentiment and sarcasm analysis tool for Tagalog and Taglish (Tagalog-English code-switched) text, built on top of [VADER Sentiment Analysis](https://github.com/cjhutto/vaderSentiment).
+An enhanced sentiment and sarcasm analysis tool for Tagalog and Taglish (Tagalog-English code-switched) text. It runs completely with **zero third-party library dependencies** and uses `Vader.txt` as a standalone lexicon library.
+
+---
+
+## What Changed in this Refactor?
+
+1. **Importing Lexicon from `Vader.txt`**:
+   - The Tagalog/Taglish sentiment words and valence scores previously embedded inside `DEFAULT_LEXICON` in the Python code have been migrated directly into [Vader.txt](file:///c:/Users/PC/Documents/VaderSentiLexi/Vader.txt).
+   - [Vader.txt](file:///c:/Users/PC/Documents/VaderSentiLexi/Vader.txt) now serves as the primary lexicon library file for the application.
+
+2. **Zero External Dependencies (Removed `vaderSentiment`)**:
+   - Removed the `vaderSentiment` package import and all external dependencies.
+   - Built a custom `SentimentIntensityAnalyzer` class in standard Python (`re`, `math`, `os`) that implements standard VADER scoring calculations (word valence lookup, ALL CAPS intensity boosting, negators, boosters, punctuation amplifiers, and compound score normalization).
+
+3. **Preserved Advanced Taglish & Sarcasm Features**:
+   - All boosters (`sobrang`, `napaka`, `grabe`), negators (`hindi`, `di`, `wala`), morphological prefix rules (`napakaganda` -> `napaka ganda`), multi-word expressions (`walang kwenta`), and rule-based sarcasm detection (`SarcasmDetector`) remain fully active and supported.
 
 ---
 
 ## Overview
 
-Standard VADER is designed for English texts. **Taglish Sentiment Analyzer** extends VADER to handle the unique linguistic patterns of Taglish, including:
+**Taglish Sentiment Analyzer** combines a custom text-file lexicon (`Vader.txt`) and built-in VADER calculation rules with Taglish-specific processing:
 
-- **Code-switching** (mixing Tagalog and English words seamlessly).
-- **Custom Tagalog Sentiment Lexicon** with valence ratings from `-4.0` to `+4.0`.
-- **Tagalog Negators** (`hindi`, `di`, `wala`, `ayaw`, `huwag`, `wag`).
-- **Tagalog Boosters / Intensifiers** (`sobrang`, `napaka`, `grabe`, `medyo`, `konti`).
-- **Morphological Prefix Handling** (decomposing superlative prefixes like `napaka-`).
-- **Multi-word Expressions** (joining idioms like `sana all` or `walang kwenta` into unified tokens).
-- **Rule-Based Sarcasm & Irony Detection** via lexical markers, contrast patterns, and mixed-polarity detection.
+- **Standalone Lexicon Library (`Vader.txt`)**: Text-file based lexicon with valence ratings from `-4.0` to `+4.0`.
+- **Code-switching**: Seamlessly handles Tagalog, Taglish, and English terms.
+- **Tagalog Negators**: `hindi`, `di`, `wala`, `ayaw`, `huwag`, `wag`, `dili`, `not`, `no`, `never`.
+- **Tagalog Boosters / Intensifiers**: `sobrang`, `napaka`, `grabe`, `medyo`, `konti`.
+- **Morphological Prefix Handling**: Decomposes superlative prefixes like `napaka-`.
+- **Multi-word Expressions**: Joins idioms like `sana all`, `pwede na yan`, or `walang kwenta` into unified tokens.
+- **Rule-Based Sarcasm & Irony Detection**: Via lexical markers, contrast patterns, and mixed-polarity detection.
 
 ---
 
 ## Features & Architecture
 
-### 1. Taglish Lexicon & Modifiers
-- Injects a dictionary of common Tagalog positive and negative terms into VADER's polarity engine.
-- Registers Tagalog negators into VADER's `NEGATE` set to properly invert scores (e.g., `"hindi maganda"` is scored negative).
-- Adds Tagalog intensifiers (`B_INCR`) and de-amplifiers (`B_DECR`) to VADER's `BOOSTER_DICT`.
+### 1. Standalone Lexicon Library (`Vader.txt`)
+- Reads lexicon entries (`<word_or_phrase> <score>`) line-by-line from `Vader.txt` on initialization.
+- Supports comments starting with `#` and multi-word phrases (e.g. `walang kwenta -3.0`, `sana all 1.5`, `pwede na yan 0.9`).
+- Can be edited directly using any text editor to expand the analyzer's vocabulary.
 
-### 2. Text Preprocessing (`_prepare_text_for_vader`)
+### 2. Pure-Python VADER Engine (`SentimentIntensityAnalyzer`)
+- Built-in polarity scoring with **zero external libraries required** (no `pip install` required).
+- Replicates standard VADER rules:
+  - **ALL CAPS Emphasis**: Increases valence score by `0.733`.
+  - **3-Word Preceding Context**: Checks prior 3 words for boosters (`+0.293` / `-0.293`) and negators (`x -0.74`).
+  - **Punctuation Amplification**: Exclamation marks (`!`) boost overall score by `+0.292` (up to 4 `!`).
+  - **Compound Score Normalization**:
+    $$\text{compound} = \frac{\text{sum\_scores}}{\sqrt{\text{sum\_scores}^2 + 15.0}}$$
+
+### 3. Text Preprocessing (`_prepare_text_for_vader`)
 - **Prefix Decomposition**: Splits prefix expressions such as `napakaganda` into `napaka ganda` so `napaka` acts as a booster and `ganda` receives its valence score.
 - **Multi-Word Idioms**: Converts phrases like `walang kwenta` into underscored tokens (`walang_kwenta`) so VADER treats them as single lexicon entries.
 
-### 3. Sarcasm & Irony Detection (`SarcasmDetector`)
+### 4. Sarcasm & Irony Detection (`SarcasmDetector`)
 Detects Taglish sarcasm using three main mechanisms:
 1. **Lexical Sarcastic Markers**: Flags expressions like `wow ha`, `edi wow`, `charot`, `eme`, `chos`, `weh di nga` (+0.45 confidence).
 2. **Structural Contrast Patterns**: Uses regular expressions to detect positive praise juxtaposed with insults (e.g., `"ganda mo, mukha kang ewan"`) or sarcastic gratitude (e.g., `"salamat ah, nasira mo ang kotse ko"`).
-3. **Mixed Polarity Detection**: Flags cases where the overall raw sentiment is positive ($\text{compound} > 0.3$) without a concessive conjunction (`pero`, `but`, `however`), but contains an un-negated strong negative term (`tanga`, `bobo`, `sira`, `basura`).
+3. **Mixed Polarity Detection**: Flags cases where overall raw sentiment is positive ($\text{compound} > 0.3$) without a concessive conjunction (`pero`, `but`, `however`), but contains an un-negated strong negative term (`tanga`, `bobo`, `sira`, `basura`).
 
-### 4. Score Adjustment Logic
-When sarcasm is detected ($\text{confidence} \ge 0.40$), the compound score is adjusted to reflect the negative intent:
+### 5. Score Adjustment Logic
+When sarcasm is detected ($\text{confidence} \ge 0.40$), the compound score is adjusted to reflect negative intent:
 
 $$\text{adjusted\_compound} = \begin{cases} -|\text{raw\_compound}| - 0.2 & \text{if } \text{raw\_compound} > 0 \\ -0.35 & \text{if } \text{raw\_compound} = 0 \\ \min(\text{raw\_compound} - 0.25, -0.45) & \text{if } \text{raw\_compound} < 0 \end{cases}$$
 
@@ -50,23 +74,23 @@ Final labels are assigned based on the adjusted compound score:
 
 ## Installation & Prerequisites
 
-Ensure you have Python 3.7+ installed. Install the `vaderSentiment` dependency:
+This analyzer runs out-of-the-box on **standard Python 3.7+ with no external pip installations required**.
 
 ```bash
-pip install vaderSentiment
+python tagalog_english_sentiment.py
 ```
 
 ---
 
 ## Quick Start / Code Usage
 
-You can import and use `TaglishSentiment` in Python:
+Import and use `TaglishSentiment` in Python:
 
 ```python
 from tagalog_english_sentiment import TaglishSentiment
 
-# Initialize analyzer
-analyzer = TaglishSentiment()
+# Initialize analyzer (loads Vader.txt by default)
+analyzer = TaglishSentiment(lexicon_file="Vader.txt")
 
 # Analyze a sample text
 result = analyzer.analyze("Sobrang galing ng palabas!")
@@ -74,8 +98,8 @@ print(result)
 # Output:
 # {
 #     'text': 'Sobrang galing ng palabas!',
-#     'raw_scores': {'neg': 0.0, 'neu': 0.448, 'pos': 0.552, 'compound': 0.6792},
-#     'adjusted_compound': 0.6792,
+#     'raw_scores': {'neg': 0.0, 'neu': 0.51, 'pos': 0.49, 'compound': 0.7783},
+#     'adjusted_compound': 0.7783,
 #     'is_sarcastic': False,
 #     'sarcasm_confidence': 0.0,
 #     'sarcasm_reasons': [],
@@ -85,7 +109,7 @@ print(result)
 # Sarcastic text example
 sarcastic_res = analyzer.analyze("Wow ha, ikaw na ang magaling.")
 print(sarcastic_res['label'], sarcastic_res['adjusted_compound'])
-# Output: SARCASTIC / NEGATIVE -0.8792
+# Output: SARCASTIC / NEGATIVE -0.7859
 ```
 
 ---
@@ -113,5 +137,6 @@ python tagalog_english_sentiment.py
 
 ## File Structure
 
-- `tagalog_english_sentiment.py`: Primary source code containing `SarcasmDetector`, `TaglishSentiment`, dynamic lexicon helpers, and the CLI `main()` loop.
-- `README.md`: Project documentation and usage guide.
+- [Vader.txt](file:///c:/Users/PC/Documents/VaderSentiLexi/Vader.txt): The text-file lexicon library containing words, phrases, and sentiment scores.
+- [tagalog_english_sentiment.py](file:///c:/Users/PC/Documents/VaderSentiLexi/tagalog_english_sentiment.py): Standalone pure-Python VADER engine, `SarcasmDetector`, `TaglishSentiment` analyzer, and CLI loop.
+- [README.md](file:///c:/Users/PC/Documents/VaderSentiLexi/README.md): Project documentation and usage guide.

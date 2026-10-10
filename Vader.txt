@@ -1,0 +1,150 @@
+# Taglish & English VADER Lexicon File
+# Format: <word or phrase> <sentiment_score>
+# Sentiment score ranges from -4.0 (extremely negative) to +4.0 (extremely positive)
+
+# Tagalog Positive Lexicon
+maganda 2.8
+magandang 2.7
+ganda 2.6
+mabuti 2.0
+mabuting 2.0
+buti 1.8
+magaling 2.8
+magagaling 2.8
+galing 2.8
+masaya 2.5
+masayang 2.9
+saya 2.2
+nasiyahan 2.5
+mahal 2.5
+minamahal 2.6
+salamat 2.0
+maraming salamat 2.8
+astig 2.4
+lodi 2.5
+petmalu 2.6
+masarap 2.6
+sarap 2.6
+gwapo 2.2
+pogi 2.2
+tama 1.5
+tamang 1.5
+nakakatuwa 2.5
+natuwa 2.3
+tuwa 2.0
+ayos 2.2
+maayos 2.2
+swerte 2.0
+swerteng 2.0
+paborito 2.4
+sigurado 2.2
+panalo 2.7
+panalong 2.7
+wagi 2.6
+maaasahan 2.3
+respeto 2.0
+sulit 2.6
+napakasulit 3.0
+mabait 2.4
+mababait 2.4
+bait 2.4
+matalino 2.5
+talino 2.5
+husay 2.6
+mahusay 2.7
+malupet 2.8
+goods 1.9
+pwede na yan 0.9
+yass 1.5
+chill 2.4
+sana all 1.5
+
+# Tagalog Negative Lexicon
+pangit -2.8
+panget -2.7
+kapangitan -2.5
+masama -2.5
+sama -2.0
+malungkot -2.6
+nalungkot -2.4
+lungkot -2.2
+nakakalungkot -2.6
+galit -2.8
+nagalit -2.8
+nakakagalit -2.9
+mahirap -1.5
+hirap -1.5
+sayang -1.8
+walang kwenta -3.0
+walang silbi -3.0
+basura -3.0
+nakakainis -2.7
+nakakaiinis -2.9
+nainis -2.5
+kainis -2.6
+inis -2.0
+nakakaasar -2.6
+naasar -2.4
+asar -2.2
+nakakasuya -2.2
+suya -2.0
+bobo -3.0
+bobong -3.0
+pagod -1.4
+nakakapagod -1.8
+takot -2.0
+nakakatakot -2.4
+sira -2.2
+sirang -2.2
+nasira -2.4
+sinira -2.5
+nakakasira -2.4
+mali -1.6
+maling -1.6
+tanga -3.2
+tangang -3.2
+inutil -3.1
+kupal -3.5
+epal -2.5
+pabida -2.4
+ewan -1.2
+bwisit -2.8
+buwisit -2.8
+bwiset -2.8
+saklap -2.5
+lugi -2.2
+bastos -2.8
+salbahe -2.6
+kadiri -2.8
+baliw -2.3
+kuskos-balungos -2.4
+
+# English Baseline Lexicon
+good 1.9
+great 3.1
+awesome 3.1
+excellent 2.7
+best 3.2
+love 3.2
+like 1.5
+nice 1.8
+happy 2.7
+beautiful 2.9
+amazing 2.8
+wonderful 2.8
+perfect 2.7
+flawless 2.3
+bad -2.5
+worst -3.1
+terrible -3.0
+horrible -2.5
+hate -2.7
+dislike -1.6
+ugly -2.0
+poor -1.4
+fail -2.5
+failed -2.3
+sad -2.1
+annoying -1.9
+boring -1.3
+broken -1.9

@@ -1,12 +1,149 @@
 import re
 import math
+import os
 from typing import Dict, List, Tuple, Any
-import vaderSentiment.vaderSentiment as vs
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+
+class SentimentIntensityAnalyzer:
+
+    B_INCR = 0.293
+    B_DECR = -0.293
+    C_INCR = 0.733
+    N_SCALAR = -0.74
+
+    def __init__(self, lexicon_file: str = "Vader.txt"):
+        self.lexicon: Dict[str, float] = {}
+        self.negate: List[str] = [
+            "hindi", "di", "hinde", "ayaw", "ayoko", "wala", "walang",
+            "huwag", "wag", "hwag", "hinding-hindi", "dili",
+            "not", "no", "never", "without", "neither", "nor", "none"
+        ]
+        self.booster_dict: Dict[str, float] = {
+            "sobrang": self.B_INCR, "sobra": self.B_INCR, "napaka": self.B_INCR,
+            "grabe": self.B_INCR, "grabeng": self.B_INCR, "talaga": self.B_INCR,
+            "talagang": self.B_INCR, "ubod": self.B_INCR, "ubod ng": self.B_INCR,
+            "masyadong": self.B_INCR, "masyado": self.B_INCR, "lalo": self.B_INCR,
+            "lalong": self.B_INCR, "tunay": self.B_INCR, "tunay na": self.B_INCR,
+            "medyo": self.B_DECR, "konti": self.B_DECR, "kaunti": self.B_DECR,
+            "bahagya": self.B_DECR, "bahagyang": self.B_DECR,
+            "very": self.B_INCR, "extremely": self.B_INCR, "really": self.B_INCR,
+            "so": self.B_INCR, "too": self.B_INCR, "super": self.B_INCR,
+            "slightly": self.B_DECR, "somewhat": self.B_DECR, "kind of": self.B_DECR
+        }
+        self.lexicon_file = lexicon_file
+        if lexicon_file:
+            self.load_lexicon_from_file(lexicon_file)
+
+    def load_lexicon_from_file(self, file_path: str):
+        if not os.path.exists(file_path):
+            return
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line_str = line.strip()
+                if not line_str or line_str.startswith("#"):
+                    continue
+                parts = line_str.rsplit(maxsplit=1)
+                if len(parts) == 2:
+                    word, score_str = parts[0].strip().lower(), parts[1].strip()
+                    try:
+                        score = float(score_str)
+                        self.lexicon[word] = score
+                        if " " in word:
+                            self.lexicon[word.replace(" ", "_")] = score
+                    except ValueError:
+                        continue
+
+    def polarity_scores(self, text: str) -> Dict[str, float]:
+        if not text or not isinstance(text, str):
+            return {"neg": 0.0, "neu": 0.0, "pos": 0.0, "compound": 0.0}
+
+        cleaned_text = text.strip()
+        words = re.findall(r"\b[\w'-]+\b", cleaned_text)
+        if not words:
+            return {"neg": 0.0, "neu": 0.0, "pos": 0.0, "compound": 0.0}
+
+        exclamation_count = min(text.count("!"), 4)
+        punct_amplifier = exclamation_count * 0.292
+
+        has_lower = any(c.islower() for c in text)
+        has_upper = any(c.isupper() for c in text)
+        is_mixed_case = has_lower and has_upper
+
+        sentiments = []
+        words_lower = [w.lower() for w in words]
+
+        for i, word in enumerate(words):
+            word_lower = words_lower[i]
+            if word_lower not in self.lexicon:
+                continue
+
+            score = self.lexicon[word_lower]
+
+            if word.isupper() and is_mixed_case:
+                if score > 0:
+                    score += self.C_INCR
+                else:
+                    score -= self.C_INCR
+
+            scalar = 0.0
+            is_negated = False
+            for k in range(1, 4):
+                if i - k >= 0:
+                    prev_word = words_lower[i - k]
+                    if prev_word in self.booster_dict:
+                        b_val = self.booster_dict[prev_word]
+                        if words[i - k].isupper() and is_mixed_case:
+                            b_val += self.C_INCR if b_val > 0 else -self.C_INCR
+                        scalar += b_val
+                    if prev_word in self.negate:
+                        is_negated = True
+
+            if score > 0:
+                score += scalar
+            elif score < 0:
+                score -= scalar
+
+            if is_negated:
+                score *= self.N_SCALAR
+
+            sentiments.append(score)
+
+        sum_s = sum(sentiments)
+        if sum_s > 0:
+            sum_s += punct_amplifier
+        elif sum_s < 0:
+            sum_s -= punct_amplifier
+
+        compound = sum_s / math.sqrt(sum_s**2 + 15.0) if sum_s != 0 else 0.0
+
+        pos_sum = sum(s for s in sentiments if s > 0)
+        neg_sum = sum(abs(s) for s in sentiments if s < 0)
+
+        if sum_s > 0:
+            pos_sum += punct_amplifier
+        elif sum_s < 0:
+            neg_sum += punct_amplifier
+
+        neu_count = len(words) - len(sentiments)
+        total_score = pos_sum + neg_sum + neu_count
+
+        if total_score > 0:
+            pos = round(pos_sum / total_score, 3)
+            neg = round(neg_sum / total_score, 3)
+            neu = round(neu_count / total_score, 3)
+        else:
+            pos = neg = 0.0
+            neu = 1.0
+
+        return {
+            "neg": neg,
+            "neu": neu,
+            "pos": pos,
+            "compound": round(compound, 4)
+        }
 
 
 class SarcasmDetector:
-    """Detects sarcasm and ironic contrast in Tagalog/Taglish texts."""
 
     def __init__(self):
         self.sarcastic_phrases = [
@@ -19,16 +156,12 @@ class SarcasmDetector:
 
         self.contrast_patterns = [
             r"\b(?:ma)?(?:ganda|galing|bait|talino|sarap|husay)\b.*?\b(?:mukha(?:ng|\s+kang)?\s+(?:ewan|tanga|bobo|sira|gago)|ewan|tanga|bobo|sira|nasira|mali|walang[ _]kwenta|basura|pangit|panget)\b",
-
             r"\bsalamat(?:\s+(?:ah|ha|din|naman))?.*?\b(?:nasira|sinira|tinapon|pinagpalit|mali|bwisit|buwisit|tapon|basura)\b",
-
             r"\b(?:edi|sige)\s+ikaw\s+na\b",
-
             r'["\'](?:ma)?(?:galing|buti|ganda|bait|husay|lodi|petmalu)["\']'
         ]
 
     def add_sarcastic_phrase(self, phrase: str):
-        """Add a custom sarcastic phrase trigger."""
         if not isinstance(phrase, str):
             return
         phrase_clean = phrase.strip().lower()
@@ -36,7 +169,6 @@ class SarcasmDetector:
             self.sarcastic_phrases.append(phrase_clean)
 
     def remove_sarcastic_phrase(self, phrase: str) -> bool:
-        """Remove a sarcastic phrase trigger."""
         if not isinstance(phrase, str):
             return False
         phrase_clean = phrase.strip().lower()
@@ -46,14 +178,12 @@ class SarcasmDetector:
         return False
 
     def detect(self, text: str, initial_compound: float) -> Tuple[bool, float, List[str]]:
-        """Detect sarcastic intent using lexical markers, contrast patterns, and mixed polarity."""
         if not text or not isinstance(text, str):
             return False, 0.0, []
 
         text_lower = text.lower().strip()
         reasons = []
         score = 0.0
-
 
         matched_phrases = []
         for phrase in sorted(self.sarcastic_phrases, key=len, reverse=True):
@@ -98,108 +228,18 @@ class SarcasmDetector:
 
 
 class TaglishSentiment:
-    """Tagalog-English (Taglish) Sentiment Analyzer extending VADER with custom lexicons,
-    negators, boosters, morphological handling, and sarcasm detection.
-    """
-    DEFAULT_LEXICON = {
-        "maganda": 2.7, "magandang": 2.7, "ganda": 2.6,
-        "mabuti": 2.0, "mabuting": 2.0, "buti": 1.8,
-        "magaling": 2.8, "magagaling": 2.8, "galing": 2.8,
-        "masaya": 2.9, "masayang": 2.9, "saya": 2.2, "nasiyahan": 2.5,
-        "mahal": 2.5, "minamahal": 2.6,
-        "salamat": 2.0, "maraming salamat": 2.8,
-        "astig": 2.4, "lodi": 2.5, "petmalu": 2.6,
-        "masarap": 2.6, "sarap": 2.6,
-        "gwapo": 2.2, "pogi": 2.2,
-        "tama": 1.5, "tamang": 1.5,
-        "nakakatuwa": 2.5, "natuwa": 2.3, "tuwa": 2.0,
-        "ayos": 1.8, "maayos": 2.2,
-        "swerte": 2.0, "swerteng": 2.0,
-        "paborito": 2.4,
-        "sigurado": 2.2,
-        "panalo": 2.7, "panalong": 2.7, "wagi": 2.6,
-        "maaasahan": 2.3,
-        "respeto": 2.0,
-        "sulit": 2.6, "napakasulit": 3.0,
-        "mabait": 2.4, "mababait": 2.4, "bait": 2.4,
-        "matalino": 2.5, "talino": 2.5,
-        "husay": 2.6, "mahusay": 2.7,
-        "sana all": 1.5,
-        
-        "pangit": -2.7, "panget": -2.7, "kapangitan": -2.5,
-        "masama": -2.5, "sama": -2.0,
-        "malungkot": -2.6, "nalungkot": -2.4, "lungkot": -2.2, "nakakalungkot": -2.6,
-        "galit": -2.8, "nagalit": -2.8, "nakakagalit": -2.9,
-        "mahirap": -1.5, "hirap": -1.5,
-        "sayang": -1.8,
-        "walang kwenta": -3.0, "walang silbi": -3.0,
-        "basura": -3.0,
-        "nakakainis": -2.7, "nainis": -2.5, "kainis": -2.6, "inis": -2.0,
-        "nakakaasar": -2.6, "naasar": -2.4, "asar": -2.2,
-        "nakakasuya": -2.2, "suya": -2.0,
-        "bobo": -3.0, "bobong": -3.0,
-        "pagod": -1.4, "nakakapagod": -1.8,
-        "takot": -2.0, "nakakatakot": -2.4,
-        "sira": -2.2, "sirang": -2.2, "nasira": -2.4, "sinira": -2.5, "nakakasira": -2.4,
-        "mali": -1.6, "maling": -1.6,
-        "tanga": -3.2, "tangang": -3.2,
-        "inutil": -3.1,
-        "kupal": -3.5,
-        "epal": -2.5,
-        "pabida": -2.4,
-        "ewan": -1.2,
-        "bwisit": -2.8, "buwisit": -2.8, "bwiset": -2.8,
-        "saklap": -2.5, "lugi": -2.2,
-        "bastos": -2.8, "salbahe": -2.6, "kadiri": -2.8,
-    }
 
-    DEFAULT_NEGATORS = [
-        "hindi", "di", "hinde", "ayaw", "ayoko", "wala", "walang",
-        "huwag", "wag", "hwag", "hinding-hindi", "dili"
-    ]
-
-    DEFAULT_BOOSTERS = {
-        "sobrang": vs.B_INCR,
-        "sobra": vs.B_INCR,
-        "napaka": vs.B_INCR,
-        "grabe": vs.B_INCR,
-        "grabeng": vs.B_INCR,
-        "talaga": vs.B_INCR,
-        "talagang": vs.B_INCR,
-        "ubod": vs.B_INCR,
-        "ubod ng": vs.B_INCR,
-        "masyadong": vs.B_INCR,
-        "masyado": vs.B_INCR,
-        "lalo": vs.B_INCR,
-        "lalong": vs.B_INCR,
-        "tunay": vs.B_INCR,
-        "tunay na": vs.B_INCR,
-        "medyo": vs.B_DECR,
-        "konti": vs.B_DECR,
-        "kaunti": vs.B_DECR,
-        "bahagya": vs.B_DECR,
-        "bahagyang": vs.B_DECR,
-    }
-
-    def __init__(self):
-        self.analyzer = SentimentIntensityAnalyzer()
+    def __init__(self, lexicon_file: str = "Vader.txt"):
+        self.lexicon_file = lexicon_file
+        self.analyzer = SentimentIntensityAnalyzer(lexicon_file=lexicon_file)
         self.sarcasm_detector = SarcasmDetector()
         self._multiword_lexicon = set()
-        self._initialize_vader_extension()
+        self._update_multiword_set()
 
-    def _initialize_vader_extension(self):
-        """Extend VADER analyzer with initial Tagalog lexicons, negators, and boosters."""
-        for word, score in self.DEFAULT_LEXICON.items():
-            self._register_lexicon_entry(word, score)
-
-        for word in self.DEFAULT_NEGATORS:
-            if word not in vs.NEGATE:
-                vs.NEGATE.append(word)
-
-        vs.BOOSTER_DICT.update(self.DEFAULT_BOOSTERS)
+    def _update_multiword_set(self):
+        self._multiword_lexicon = {w for w in self.analyzer.lexicon if " " in w}
 
     def _register_lexicon_entry(self, word: str, score: float):
-        """Register a word/phrase in lexicon, supporting multi-word expressions via underscores."""
         clean_word = word.strip().lower()
         if not clean_word:
             return
@@ -210,7 +250,6 @@ class TaglishSentiment:
             self.analyzer.lexicon[underscored] = score
 
     def add_lexicon_word(self, word: str, score: float) -> float:
-        """Add or update a lexicon word with a sentiment score (-4.0 to 4.0)."""
         if not isinstance(word, str):
             raise ValueError("Word must be a string")
         clean_word = word.strip().lower()
@@ -228,7 +267,6 @@ class TaglishSentiment:
         return bounded_score
 
     def remove_lexicon_word(self, word: str) -> bool:
-        """Remove a word or phrase from the active lexicon."""
         if not isinstance(word, str):
             return False
         clean_word = word.strip().lower()
@@ -245,60 +283,51 @@ class TaglishSentiment:
         return found
 
     def add_negator(self, word: str) -> str:
-        """Add a custom negator word."""
         if not isinstance(word, str) or not word.strip():
             raise ValueError("Negator must be a non-empty string")
         clean_word = word.strip().lower()
-        if clean_word not in vs.NEGATE:
-            vs.NEGATE.append(clean_word)
+        if clean_word not in self.analyzer.negate:
+            self.analyzer.negate.append(clean_word)
         return clean_word
 
-    def add_booster(self, word: str, modifier: float = vs.B_INCR) -> Tuple[str, float]:
-        """Add a custom booster / intensifier word with modifier value."""
+    def add_booster(self, word: str, modifier: float = SentimentIntensityAnalyzer.B_INCR) -> Tuple[str, float]:
         if not isinstance(word, str) or not word.strip():
             raise ValueError("Booster word must be a non-empty string")
         clean_word = word.strip().lower()
         try:
             val = float(modifier)
             if math.isnan(val):
-                val = vs.B_INCR
+                val = SentimentIntensityAnalyzer.B_INCR
         except (ValueError, TypeError):
-            val = vs.B_INCR
-        vs.BOOSTER_DICT[clean_word] = val
+            val = SentimentIntensityAnalyzer.B_INCR
+        self.analyzer.booster_dict[clean_word] = val
         return clean_word, val
 
     def add_sarcastic_phrase(self, phrase: str):
-        """Add a custom sarcastic phrase trigger."""
         self.sarcasm_detector.add_sarcastic_phrase(phrase)
 
     def remove_negator(self, word: str) -> bool:
-        """Remove a negator word."""
         if not isinstance(word, str):
             return False
         clean_word = word.strip().lower()
-        if clean_word in vs.NEGATE:
-            vs.NEGATE.remove(clean_word)
+        if clean_word in self.analyzer.negate:
+            self.analyzer.negate.remove(clean_word)
             return True
         return False
 
     def remove_booster(self, word: str) -> bool:
-        """Remove a booster / intensifier word."""
         if not isinstance(word, str):
             return False
         clean_word = word.strip().lower()
-        if clean_word in vs.BOOSTER_DICT:
-            del vs.BOOSTER_DICT[clean_word]
+        if clean_word in self.analyzer.booster_dict:
+            del self.analyzer.booster_dict[clean_word]
             return True
         return False
 
     def remove_sarcastic_phrase(self, phrase: str) -> bool:
-        """Remove a sarcastic phrase trigger."""
         return self.sarcasm_detector.remove_sarcastic_phrase(phrase)
 
     def remove_item(self, item: str, category: str = "any") -> Dict[str, bool]:
-        """Remove a word/phrase from specified category ('lexicon', 'negator', 'booster', 'sarcasm', or 'any').
-        Returns dictionary indicating what was removed.
-        """
         if not isinstance(item, str) or not item.strip():
             return {"lexicon": False, "negator": False, "booster": False, "sarcasm": False}
         clean_item = item.strip().lower()
@@ -324,13 +353,11 @@ class TaglishSentiment:
 
     @staticmethod
     def _clean(text: str) -> str:
-        """Clean and normalize input text while preserving casing for emphasis."""
         if not isinstance(text, str):
             text = "" if text is None else str(text)
         return re.sub(r"\s+", " ", text.strip())
 
     def _prepare_text_for_vader(self, text: str) -> str:
-        """Preprocess text for VADER by decomposing superlative affixes and joining multi-word idioms."""
         expanded = re.sub(r'\bnapaka-?([a-z]{3,})\b', r'napaka \1', text, flags=re.IGNORECASE)
 
         sorted_phrases = sorted(self._multiword_lexicon, key=len, reverse=True)
@@ -343,14 +370,6 @@ class TaglishSentiment:
         return expanded
 
     def analyze(self, text: str) -> Dict[str, Any]:
-        """Analyze text sentiment and structural sarcasm.
-
-        Returns detailed dictionary containing:
-        - raw sentiment scores
-        - sarcasm detection results
-        - adjusted compound score
-        - final sentiment label
-        """
         cleaned_text = self._clean(text)
         if not cleaned_text:
             return {
@@ -394,7 +413,6 @@ class TaglishSentiment:
 
     @staticmethod
     def _determine_label(compound: float, is_sarcastic: bool) -> str:
-        """Determine final text sentiment label."""
         if is_sarcastic:
             return "SARCASTIC / NEGATIVE"
         if compound >= 0.05:
@@ -408,7 +426,7 @@ def main():
     tool = TaglishSentiment()
     print("==================================================")
     print("   Tagalog-English (Taglish) Sentiment Analyzer   ")
-    print("   With Lexicon Scoring, Negators, Boosters & Sarcasm ")
+    print("      (Using Vader.txt Lexicon & Pure Python)     ")
     print("==================================================")
     print("Commands:")
     print("  add <word> <score>               - Add lexicon word/phrase with score (-4.0 to +4.0)")
@@ -417,7 +435,7 @@ def main():
     print("  sarcasm <phrase>                 - Add sarcastic phrase trigger")
     print("  remove [type] <word/phrase>      - Remove item (type: 'lexicon', 'negator', 'booster', 'sarcasm', or omitted)")
     print("  quit                             - Exit program\n")
-    
+
     print("Running initial test cases...")
     test_cases = [
         "Maganda at mabuti ang araw na ito.",
@@ -482,18 +500,18 @@ def main():
             parts = arg_str.rsplit(maxsplit=1) if " " in arg_str else [arg_str]
             if parts and parts[0]:
                 b_word = parts[0]
-                b_type = vs.B_INCR
+                b_type = SentimentIntensityAnalyzer.B_INCR
                 if len(parts) == 2:
                     flag = parts[1].lower()
                     if flag in ("decr", "decrease", "down"):
-                        b_type = vs.B_DECR
+                        b_type = SentimentIntensityAnalyzer.B_DECR
                     elif flag in ("incr", "increase", "up"):
-                        b_type = vs.B_INCR
+                        b_type = SentimentIntensityAnalyzer.B_INCR
                     else:
                         try:
                             b_type = float(parts[1])
                         except ValueError:
-                            b_type = vs.B_INCR
+                            b_type = SentimentIntensityAnalyzer.B_INCR
                 try:
                     word, mod = tool.add_booster(b_word, b_type)
                     print(f"[Booster] Added '{word}' with modifier {mod}")
