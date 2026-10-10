@@ -55,6 +55,7 @@ goods 1.9
 pwede na yan 0.9
 yass 1.5
 chill 2.4
+werpa 2.2
 sana all 1.5
 
 # Tagalog Negative
