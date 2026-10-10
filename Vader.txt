@@ -1,8 +1,4 @@
-# Taglish & English VADER Lexicon File
-# Format: <word or phrase> <sentiment_score>
-# Sentiment score ranges from -4.0 (extremely negative) to +4.0 (extremely positive)
-
-# Tagalog Positive Lexicon
+# Tagalog Positive
 maganda 2.8
 magandang 2.7
 ganda 2.6
@@ -59,7 +55,7 @@ yass 1.5
 chill 2.4
 sana all 1.5
 
-# Tagalog Negative Lexicon
+# Tagalog Negative
 pangit -2.8
 panget -2.7
 kapangitan -2.5
@@ -120,26 +116,37 @@ baliw -2.3
 kuskos-balungos -2.4
 
 # English Baseline Lexicon
+
+# Positive
 good 1.9
 great 3.1
 awesome 3.1
+impressive 3.0
 excellent 2.7
 best 3.2
 love 3.2
 like 1.5
 nice 1.8
+handsome 2.9
+enjoying 2.8
+enjoyable 2.8
 happy 2.7
 beautiful 2.9
 amazing 2.8
 wonderful 2.8
 perfect 2.7
 flawless 2.3
+
+
+#negative
 bad -2.5
 worst -3.1
 terrible -3.0
 horrible -2.5
 hate -2.7
 dislike -1.6
+schtick -2.9
+dick - 2.5
 ugly -2.0
 poor -1.4
 fail -2.5
@@ -147,4 +154,6 @@ failed -2.3
 sad -2.1
 annoying -1.9
 boring -1.3
+pathetic 2.6
 broken -1.9
+
