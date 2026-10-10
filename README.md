@@ -1,3 +1,4 @@
+Ernesto Torres
 # Tagalog-English (Taglish) Sentiment & Sarcasm Analyzer
 
 An enhanced sentiment and sarcasm analysis tool for Tagalog and Taglish (Tagalog-English code-switched) text. It runs completely with **zero third-party library dependencies** and uses `Vader.txt` as a standalone lexicon library.
