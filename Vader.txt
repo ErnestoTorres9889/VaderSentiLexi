@@ -12,6 +12,8 @@ masaya 2.5
 masayang 2.9
 saya 2.2
 nasiyahan 2.5
+tibay 2.9
+matibay 3.5
 mahal 2.5
 minamahal 2.6
 salamat 2.0
@@ -78,6 +80,7 @@ nakakainis -2.7
 nakakaiinis -2.9
 nainis -2.5
 kainis -2.6
+agoy -2.0
 inis -2.0
 nakakaasar -2.6
 naasar -2.4
@@ -156,4 +159,5 @@ annoying -1.9
 boring -1.3
 pathetic 2.6
 broken -1.9
+crap -2.8
 
