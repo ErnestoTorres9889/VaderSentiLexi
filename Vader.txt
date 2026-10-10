@@ -54,7 +54,6 @@ malupet 2.8
 goods 1.9
 pwede na yan 0.9
 yass 1.5
-chill 2.4
 werpa 2.2
 sana all 1.5
 
@@ -140,6 +139,8 @@ amazing 2.8
 wonderful 2.8
 perfect 2.7
 flawless 2.3
+chill 2.5
+rad 2.9
 
 
 #negative
