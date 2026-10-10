@@ -2,23 +2,6 @@
 
 An enhanced sentiment and sarcasm analysis tool for Tagalog and Taglish (Tagalog-English code-switched) text. It runs completely with **zero third-party library dependencies** and uses `Vader.txt` as a standalone lexicon library.
 
----
-
-## What Changed in this Refactor?
-
-1. **Importing Lexicon from `Vader.txt`**:
-   - The Tagalog/Taglish sentiment words and valence scores previously embedded inside `DEFAULT_LEXICON` in the Python code have been migrated directly into [Vader.txt](file:///c:/Users/PC/Documents/VaderSentiLexi/Vader.txt).
-   - [Vader.txt](file:///c:/Users/PC/Documents/VaderSentiLexi/Vader.txt) now serves as the primary lexicon library file for the application.
-
-2. **Zero External Dependencies (Removed `vaderSentiment`)**:
-   - Removed the `vaderSentiment` package import and all external dependencies.
-   - Built a custom `SentimentIntensityAnalyzer` class in standard Python (`re`, `math`, `os`) that implements standard VADER scoring calculations (word valence lookup, ALL CAPS intensity boosting, negators, boosters, punctuation amplifiers, and compound score normalization).
-
-3. **Preserved Advanced Taglish & Sarcasm Features**:
-   - All boosters (`sobrang`, `napaka`, `grabe`), negators (`hindi`, `di`, `wala`), morphological prefix rules (`napakaganda` -> `napaka ganda`), multi-word expressions (`walang kwenta`), and rule-based sarcasm detection (`SarcasmDetector`) remain fully active and supported.
-
----
-
 ## Overview
 
 **Taglish Sentiment Analyzer** combines a custom text-file lexicon (`Vader.txt`) and built-in VADER calculation rules with Taglish-specific processing:
